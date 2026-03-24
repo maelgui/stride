@@ -7,3 +7,5 @@ app_identifier([
   "fr.maelgui.stride.ShieldConfiguration",
   "fr.maelgui.stride.ShieldAction"
 ])
+username("mael.guillossou@gmail.com") # Your Apple Developer Portal username
+
