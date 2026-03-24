@@ -9,7 +9,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: bundle install
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
       - name: Run tests
         run: bundle exec fastlane test
