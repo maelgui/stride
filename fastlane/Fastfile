@@ -14,10 +14,17 @@ platform :ios do
   lane :beta do
     setup_ci if ENV["CI"]
 
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: false
+    )
+
     match(type: "appstore", readonly: is_ci)
 
     increment_build_number(
-      build_number: ENV["GITHUB_RUN_NUMBER"] || latest_testflight_build_number + 1
+      build_number: latest_testflight_build_number(api_key: api_key) + 1
     )
 
     build_app(
@@ -25,28 +32,6 @@ platform :ios do
       export_method: "app-store"
     )
 
-    upload_to_testflight(skip_waiting_for_build_processing: true)
-  end
-
-  desc "Full release to App Store"
-  lane :release do
-    setup_ci if ENV["CI"]
-
-    match(type: "appstore", readonly: is_ci)
-
-    increment_build_number(
-      build_number: ENV["GITHUB_RUN_NUMBER"] || latest_testflight_build_number + 1
-    )
-
-    build_app(
-      scheme: "Stride",
-      export_method: "app-store"
-    )
-
-    upload_to_app_store(
-      skip_metadata: true,
-      skip_screenshots: true,
-      precheck_include_in_app_purchases: false
-    )
+    upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
   end
 end

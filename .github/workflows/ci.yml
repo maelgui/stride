@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: bundle install
       - name: Run tests
-        run: |
-          gem install fastlane
-          fastlane test
+        run: bundle exec fastlane test

@@ -1,4 +1,9 @@
-git_url(ENV["MATCH_GIT_URL"])
+git_url("https://github.com/maelgui/fastlane-match-creds")
 storage_mode("git")
 type("appstore")
-app_identifier("fr.maelgui.stride")
+app_identifier([
+  "fr.maelgui.stride",
+  "fr.maelgui.stride.DeviceActivityMonitor",
+  "fr.maelgui.stride.ShieldConfiguration",
+  "fr.maelgui.stride.ShieldAction"
+])
