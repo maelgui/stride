@@ -20,7 +20,7 @@ platform :ios do
       key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
     )
 
-    match(type: "appstore", readonly: is_ci)
+    match(type: "development", readonly: is_ci)
 
     increment_build_number(
       build_number: latest_testflight_build_number(api_key: api_key) + 1
@@ -28,11 +28,12 @@ platform :ios do
 
     build_app(
       scheme: "Stride",
-      export_method: "app-store"
+      export_method: "development",
+      configuration: "Debug"
     )
 
     upload_to_testflight(
-      api_key: api_key, 
+      api_key: api_key,
       skip_waiting_for_build_processing: true,
       groups: ["Stride Testers"]
     )
