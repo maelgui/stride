@@ -8,6 +8,11 @@ enum HabitFrequency: String, Codable, CaseIterable {
     case custom = "Custom"
 }
 
+enum GoalPeriod: String, Codable, CaseIterable {
+    case daily = "Per Day"
+    case weekly = "Per Week"
+}
+
 @Model
 final class Habit {
     var name: String
@@ -19,10 +24,14 @@ final class Habit {
     var createdAt: Date
     var isAutoManaged: Bool // screen time habits
     var linkedAppLimitId: String? // UUID string of AppLimitConfig
+    var goalTarget: Int // 0 = simple checkbox habit, >0 = count-based
+    var goalPeriod: GoalPeriod
     @Relationship(deleteRule: .cascade, inverse: \HabitCompletion.habit)
     var completions: [HabitCompletion]
 
-    init(name: String, desc: String = "", frequency: HabitFrequency = .daily, customDays: [Int] = [], reminderEnabled: Bool = false, reminderTime: Date = Calendar.current.date(from: DateComponents(hour: 9))!, isAutoManaged: Bool = false, linkedAppLimitId: String? = nil) {
+    var isCountBased: Bool { goalTarget > 0 }
+
+    init(name: String, desc: String = "", frequency: HabitFrequency = .daily, customDays: [Int] = [], reminderEnabled: Bool = false, reminderTime: Date = Calendar.current.date(from: DateComponents(hour: 9))!, isAutoManaged: Bool = false, linkedAppLimitId: String? = nil, goalTarget: Int = 0, goalPeriod: GoalPeriod = .daily) {
         self.name = name
         self.desc = desc
         self.frequency = frequency
@@ -33,6 +42,8 @@ final class Habit {
         self.completions = []
         self.isAutoManaged = isAutoManaged
         self.linkedAppLimitId = linkedAppLimitId
+        self.goalTarget = goalTarget
+        self.goalPeriod = goalPeriod
     }
 
     var scheduledDays: Set<Int> {
@@ -50,8 +61,28 @@ final class Habit {
     }
 
     func isCompletedOn(_ date: Date) -> Bool {
+        if isCountBased {
+            switch goalPeriod {
+            case .daily:
+                return countOn(date) >= goalTarget
+            case .weekly:
+                return countThisWeek(from: date) >= goalTarget
+            }
+        }
         let cal = Calendar.current
         return completions.contains { cal.isDate($0.date, inSameDayAs: date) }
+    }
+
+    func countOn(_ date: Date) -> Int {
+        let cal = Calendar.current
+        return completions.filter { cal.isDate($0.date, inSameDayAs: date) }.count
+    }
+
+    func countThisWeek(from date: Date = Date()) -> Int {
+        let cal = Calendar.current
+        let startOfWeek = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date))!
+        let endOfWeek = cal.date(byAdding: .day, value: 7, to: startOfWeek)!
+        return completions.filter { $0.date >= startOfWeek && $0.date < endOfWeek }.count
     }
 
     var currentStreak: Int {

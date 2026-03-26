@@ -12,6 +12,8 @@ struct HabitFormView: View {
     @State private var customDays: Set<Int> = []
     @State private var reminderEnabled = false
     @State private var reminderTime = Calendar.current.date(from: DateComponents(hour: 9))!
+    @State private var goalTarget = 0
+    @State private var goalPeriod: GoalPeriod = .daily
 
     private let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
@@ -46,6 +48,17 @@ struct HabitFormView: View {
                     }
                 }
 
+                Section("Goal (optional)") {
+                    Stepper("Target: \(goalTarget)x", value: $goalTarget, in: 0...100)
+                    if goalTarget > 0 {
+                        Picker("Period", selection: $goalPeriod) {
+                            ForEach(GoalPeriod.allCases, id: \.self) { p in
+                                Text(p.rawValue).tag(p)
+                            }
+                        }
+                    }
+                }
+
                 Section("Reminder") {
                     Toggle("Enable reminder", isOn: $reminderEnabled)
                     if reminderEnabled {
@@ -72,6 +85,8 @@ struct HabitFormView: View {
                     customDays = Set(h.customDays)
                     reminderEnabled = h.reminderEnabled
                     reminderTime = h.reminderTime
+                    goalTarget = h.goalTarget
+                    goalPeriod = h.goalPeriod
                 }
             }
         }
@@ -85,6 +100,8 @@ struct HabitFormView: View {
             h.customDays = Array(customDays)
             h.reminderEnabled = reminderEnabled
             h.reminderTime = reminderTime
+            h.goalTarget = goalTarget
+            h.goalPeriod = goalPeriod
         } else {
             let habit = Habit(
                 name: name.trimmingCharacters(in: .whitespaces),
@@ -92,7 +109,9 @@ struct HabitFormView: View {
                 frequency: frequency,
                 customDays: Array(customDays),
                 reminderEnabled: reminderEnabled,
-                reminderTime: reminderTime
+                reminderTime: reminderTime,
+                goalTarget: goalTarget,
+                goalPeriod: goalPeriod
             )
             context.insert(habit)
         }

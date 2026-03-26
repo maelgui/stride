@@ -26,6 +26,8 @@ struct TodayView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .listRowBackground(Color.clear)
+                    .glassEffect(.regular.interactive())
 
                     Section {
                         ForEach(todayHabits) { habit in
@@ -71,12 +73,22 @@ private struct HabitRow: View {
             if !habit.isAutoManaged { toggle() }
         } label: {
             HStack {
-                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isCompleted ? .green : .secondary)
-                    .font(.title2)
+                if habit.isCountBased {
+                    countIcon
+                } else {
+                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isCompleted ? .green : .secondary)
+                        .font(.title2)
+                }
                 VStack(alignment: .leading) {
                     Text(habit.name)
                         .strikethrough(isCompleted)
+                    if habit.isCountBased {
+                        let current = habit.goalPeriod == .weekly ? habit.countThisWeek() : habit.countOn(Date())
+                        Text("\(current)/\(habit.goalTarget) \(habit.goalPeriod.rawValue.lowercased())")
+                            .font(.caption)
+                            .foregroundStyle(isCompleted ? .green : .secondary)
+                    }
                     if habit.currentStreak > 0 {
                         Text("\(habit.currentStreak) day streak 🔥")
                             .font(.caption)
@@ -95,12 +107,32 @@ private struct HabitRow: View {
         .sensoryFeedback(.impact, trigger: isCompleted)
     }
 
+    @ViewBuilder
+    private var countIcon: some View {
+        let current = habit.goalPeriod == .weekly ? habit.countThisWeek() : habit.countOn(Date())
+        ZStack {
+            Circle()
+                .trim(from: 0, to: min(1, Double(current) / Double(max(1, habit.goalTarget))))
+                .stroke(isCompleted ? Color.green : Color.blue, lineWidth: 3)
+                .rotationEffect(.degrees(-90))
+                .frame(width: 32, height: 32)
+            Text("\(current)")
+                .font(.caption2).bold()
+        }
+        .glassEffect(.regular)
+    }
+
     private func toggle() {
-        let cal = Calendar.current
-        if let existing = habit.completions.first(where: { cal.isDate($0.date, inSameDayAs: Date()) }) {
-            context.delete(existing)
-        } else {
+        if habit.isCountBased {
+            // Always add — no toggle off for count-based
             context.insert(HabitCompletion(habit: habit))
+        } else {
+            let cal = Calendar.current
+            if let existing = habit.completions.first(where: { cal.isDate($0.date, inSameDayAs: Date()) }) {
+                context.delete(existing)
+            } else {
+                context.insert(HabitCompletion(habit: habit))
+            }
         }
     }
 }

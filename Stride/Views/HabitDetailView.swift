@@ -20,7 +20,12 @@ struct HabitDetailView: View {
             Section("Progress") {
                 LabeledContent("Current Streak", value: "\(habit.currentStreak) days")
                 LabeledContent("Total Completions", value: "\(habit.completions.count)")
+                if habit.isCountBased {
+                    LabeledContent("Goal", value: "\(habit.goalTarget)x \(habit.goalPeriod.rawValue.lowercased())")
+                }
             }
+            .listRowBackground(Color.clear)
+            .glassEffect(.regular)
 
             Section("Reminder") {
                 if habit.reminderEnabled {
