@@ -1,6 +1,6 @@
 import Foundation
 import FamilyControls
-import DeviceActivity
+@preconcurrency import DeviceActivity
 import ManagedSettings
 
 @MainActor

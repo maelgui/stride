@@ -1,7 +1,7 @@
 import Foundation
 
 /// Shared storage between main app and extensions via App Group
-final class SharedStore {
+final class SharedStore: Sendable {
     static let shared = SharedStore()
     private let defaults: UserDefaults
 

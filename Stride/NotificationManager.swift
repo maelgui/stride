@@ -1,6 +1,6 @@
 import UserNotifications
 
-final class NotificationManager {
+final class NotificationManager: Sendable {
     static let shared = NotificationManager()
     private let center = UNUserNotificationCenter.current()
 

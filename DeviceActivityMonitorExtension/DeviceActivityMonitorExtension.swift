@@ -1,4 +1,4 @@
-import DeviceActivity
+@preconcurrency import DeviceActivity
 import ManagedSettings
 
 class DeviceActivityMonitorExtension: DeviceActivityMonitor {
