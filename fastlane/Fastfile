@@ -16,6 +16,11 @@ platform :ios do
 
     match(type: "adhoc", readonly: is_ci)
 
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      team_id: "Z52NTCW222"
+    )
+
     build_app(
       scheme: "Stride",
       export_method: "ad-hoc",
