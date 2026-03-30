@@ -8,5 +8,5 @@ app_identifier([
   "fr.maelgui.stride.ShieldAction"
 ])
 username("mael.guillossou@gmail.com") # Your Apple Developer Portal username
-generate_apple_certs(false)
+# generate_apple_certs(false)
 
