@@ -10,6 +10,19 @@ platform :ios do
     )
   end
 
+  desc "Build ad hoc IPA for direct distribution"
+  lane :adhoc do
+    setup_ci if ENV["CI"]
+
+    match(type: "adhoc", readonly: is_ci)
+
+    build_app(
+      scheme: "Stride",
+      export_method: "ad-hoc",
+      configuration: "Release"
+    )
+  end
+
   desc "Build and upload to TestFlight"
   lane :beta do
     setup_ci if ENV["CI"]
