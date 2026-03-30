@@ -1,8 +1,8 @@
 import Foundation
 
 /// Shared storage between main app and extensions via App Group
-final class SharedStore: Sendable {
-    static let shared = SharedStore()
+final class SharedStore {
+    nonisolated(unsafe) static let shared = SharedStore()
     private let defaults: UserDefaults
 
     static let appGroup = "group.fr.maelgui.stride"

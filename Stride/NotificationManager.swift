@@ -1,7 +1,7 @@
 import UserNotifications
 
-final class NotificationManager: Sendable {
-    static let shared = NotificationManager()
+final class NotificationManager {
+    nonisolated(unsafe) static let shared = NotificationManager()
     private let center = UNUserNotificationCenter.current()
 
     func requestPermission() {
