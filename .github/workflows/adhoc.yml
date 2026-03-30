@@ -9,6 +9,7 @@ jobs:
     runs-on: macos-26
     permissions:
       contents: write
+      pages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +30,46 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: Build #${{ github.run_number }}
           files: '*.ipa'
+
+      - name: Generate OTA manifest
+        run: |
+          IPA_URL="https://github.com/maelgui/Stride/releases/download/build-${{ github.run_number }}/Stride.ipa"
+          cat > docs/manifest.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>items</key>
+            <array>
+              <dict>
+                <key>assets</key>
+                <array>
+                  <dict>
+                    <key>kind</key>
+                    <string>software-package</string>
+                    <key>url</key>
+                    <string>${IPA_URL}</string>
+                  </dict>
+                </array>
+                <key>metadata</key>
+                <dict>
+                  <key>bundle-identifier</key>
+                  <string>fr.maelgui.stride</string>
+                  <key>bundle-version</key>
+                  <string>1.0.${{ github.run_number }}</string>
+                  <key>kind</key>
+                  <string>software</string>
+                  <key>title</key>
+                  <string>Stride</string>
+                </dict>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
