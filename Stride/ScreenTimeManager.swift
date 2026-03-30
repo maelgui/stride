@@ -1,7 +1,7 @@
 import Foundation
-import FamilyControls
+@preconcurrency import FamilyControls
 @preconcurrency import DeviceActivity
-import ManagedSettings
+@preconcurrency import ManagedSettings
 
 @MainActor
 final class ScreenTimeManager: ObservableObject {
