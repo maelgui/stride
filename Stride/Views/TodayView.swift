@@ -3,58 +3,145 @@ import SwiftData
 
 struct TodayView: View {
     @Environment(\.modelContext) private var context
-    @Query private var habits: [Habit]
+    @Query(sort: \Habit.createdAt, order: .reverse) private var habits: [Habit]
+    @State private var selectedDate = Date()
+    @State private var showingForm = false
 
-    private var todayHabits: [Habit] {
-        habits.filter { $0.isDueOn(Date()) }
+    private let cal = Calendar.current
+
+    private var weekDates: [Date] {
+        let weekday = cal.component(.weekday, from: selectedDate)
+        let start = cal.date(byAdding: .day, value: -(weekday - cal.firstWeekday), to: selectedDate)!
+        return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
     }
 
-    private var completedCount: Int {
-        todayHabits.filter { $0.isCompletedOn(Date()) }.count
+    private func progress(for date: Date) -> (done: Int, total: Int) {
+        let due = habits.filter { $0.isDueOn(date) }
+        let done = due.filter { $0.isCompletedOn(date) }.count
+        return (done, due.count)
     }
 
     var body: some View {
         NavigationStack {
-            List {
-                if todayHabits.isEmpty {
-                    ContentUnavailableView("No habits today", systemImage: "moon.zzz", description: Text("Add habits in the Habits tab"))
-                } else {
-                    Section {
-                        ProgressView(value: Double(completedCount), total: Double(todayHabits.count))
-                            .tint(completedCount == todayHabits.count ? .green : .blue)
-                        Text("\(completedCount)/\(todayHabits.count) completed")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .listRowBackground(Color.clear)
-                    .glassEffect(.regular.interactive())
+            VStack(spacing: 0) {
+                // Week calendar strip
+                HStack(spacing: 0) {
+                    ForEach(weekDates, id: \.self) { date in
+                        let p = progress(for: date)
+                        let isSelected = cal.isDate(date, inSameDayAs: selectedDate)
+                        let isToday = cal.isDateInToday(date)
 
-                    Section {
-                        ForEach(todayHabits) { habit in
-                            HabitRow(habit: habit)
+                        Button {
+                            selectedDate = date
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(date.formatted(.dateTime.weekday(.short)))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                ZStack {
+                                    Circle()
+                                        .fill(isSelected ? Color.accentColor : .clear)
+                                        .frame(width: 32, height: 32)
+                                    Text(date.formatted(.dateTime.day()))
+                                        .font(.caption.bold())
+                                        .foregroundStyle(isSelected ? .white : isToday ? .accentColor : .primary)
+                                }
+                                // Progress ring
+                                ZStack {
+                                    Circle()
+                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 3)
+                                    Circle()
+                                        .trim(from: 0, to: p.total > 0 ? Double(p.done) / Double(p.total) : 0)
+                                        .stroke(p.done == p.total && p.total > 0 ? Color.green : Color.accentColor, lineWidth: 3)
+                                        .rotationEffect(.degrees(-90))
+                                }
+                                .frame(width: 20, height: 20)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+
+                Divider()
+
+                // Habits list
+                List {
+                    if habits.isEmpty {
+                        ContentUnavailableView("No habits yet", systemImage: "plus.circle", description: Text("Tap + to create your first habit"))
+                    } else {
+                        let dueToday = habits.filter { $0.isDueOn(selectedDate) }
+                        let notDue = habits.filter { !$0.isDueOn(selectedDate) }
+
+                        if !dueToday.isEmpty {
+                            Section {
+                                ForEach(dueToday) { habit in
+                                    NavigationLink(destination: HabitDetailView(habit: habit)) {
+                                        HabitRow(habit: habit, date: selectedDate)
+                                    }
+                                }
+                                .onDelete { offsets in delete(from: dueToday, at: offsets) }
+                            }
+                        }
+
+                        if !notDue.isEmpty {
+                            Section("Not scheduled") {
+                                ForEach(notDue) { habit in
+                                    NavigationLink(destination: HabitDetailView(habit: habit)) {
+                                        HStack {
+                                            Image(systemName: "minus.circle")
+                                                .foregroundStyle(.quaternary)
+                                                .font(.title2)
+                                            VStack(alignment: .leading) {
+                                                Text(habit.name)
+                                                Text(habit.frequency.rawValue)
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                                .onDelete { offsets in delete(from: notDue, at: offsets) }
+                            }
                         }
                     }
                 }
+                .listStyle(.insetGrouped)
             }
-            .navigationTitle("Today")
+            .navigationTitle("Habits")
+            .toolbar {
+                Button { showingForm = true } label: {
+                    Image(systemName: "plus")
+                }
+            }
+            .sheet(isPresented: $showingForm) {
+                HabitFormView()
+            }
             .onAppear { syncAutoManagedHabits() }
+        }
+    }
+
+    private func delete(from source: [Habit], at offsets: IndexSet) {
+        for i in offsets {
+            let habit = source[i]
+            NotificationManager.shared.removeNotification(for: habit)
+            context.delete(habit)
         }
     }
 
     private func syncAutoManagedHabits() {
         let autoHabits = habits.filter { $0.isAutoManaged && $0.linkedAppLimitId != nil }
-        let cal = Calendar.current
         for habit in autoHabits {
             guard let idStr = habit.linkedAppLimitId, let id = UUID(uuidString: idStr) else { continue }
             let bypassed = SharedStore.shared.bypassedToday(for: id)
             let alreadyCompleted = habit.isCompletedOn(Date())
 
             if !bypassed && !alreadyCompleted {
-                // Auto-complete: no bypass today
-                let completion = HabitCompletion(habit: habit)
-                context.insert(completion)
+                context.insert(HabitCompletion(habit: habit))
             } else if bypassed && alreadyCompleted {
-                // Remove auto-completion if bypassed
                 if let existing = habit.completions.first(where: { cal.isDateInToday($0.date) }) {
                     context.delete(existing)
                 }
@@ -66,50 +153,48 @@ struct TodayView: View {
 private struct HabitRow: View {
     @Environment(\.modelContext) private var context
     let habit: Habit
-    private var isCompleted: Bool { habit.isCompletedOn(Date()) }
+    let date: Date
+    private var isCompleted: Bool { habit.isCompletedOn(date) }
+    private var isToday: Bool { Calendar.current.isDateInToday(date) }
 
     var body: some View {
-        Button {
-            if !habit.isAutoManaged { toggle() }
-        } label: {
-            HStack {
-                if habit.isCountBased {
-                    countIcon
-                } else {
-                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(isCompleted ? .green : .secondary)
-                        .font(.title2)
-                }
-                VStack(alignment: .leading) {
-                    Text(habit.name)
-                        .strikethrough(isCompleted)
-                    if habit.isCountBased {
-                        let current = habit.goalPeriod == .weekly ? habit.countThisWeek() : habit.countOn(Date())
-                        Text("\(current)/\(habit.goalTarget) \(habit.goalPeriod.rawValue.lowercased())")
-                            .font(.caption)
-                            .foregroundStyle(isCompleted ? .green : .secondary)
-                    }
-                    if habit.currentStreak > 0 {
-                        Text("\(habit.currentStreak) day streak 🔥")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                    if habit.isAutoManaged {
-                        Text("Auto-tracked")
-                            .font(.caption2)
-                            .foregroundStyle(.blue)
-                    }
-                }
-                .foregroundStyle(isCompleted ? .secondary : .primary)
+        HStack {
+            if habit.isCountBased {
+                countIcon
+            } else {
+                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isCompleted ? .green : .secondary)
+                    .font(.title2)
+                    .onTapGesture { if isToday && !habit.isAutoManaged { toggle() } }
             }
+            VStack(alignment: .leading) {
+                Text(habit.name)
+                    .strikethrough(isCompleted)
+                if habit.isCountBased {
+                    let current = habit.goalPeriod == .weekly ? habit.countThisWeek(from: date) : habit.countOn(date)
+                    Text("\(current)/\(habit.goalTarget) \(habit.goalPeriod.rawValue.lowercased())")
+                        .font(.caption)
+                        .foregroundStyle(isCompleted ? .green : .secondary)
+                }
+                if habit.currentStreak > 0 {
+                    Text("\(habit.currentStreak) day streak 🔥")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+                if habit.isAutoManaged {
+                    Text("Auto-tracked")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                }
+            }
+            .foregroundStyle(isCompleted ? .secondary : .primary)
         }
-        .buttonStyle(.plain)
         .sensoryFeedback(.impact, trigger: isCompleted)
     }
 
     @ViewBuilder
     private var countIcon: some View {
-        let current = habit.goalPeriod == .weekly ? habit.countThisWeek() : habit.countOn(Date())
+        let current = habit.goalPeriod == .weekly ? habit.countThisWeek(from: date) : habit.countOn(date)
         ZStack {
             Circle()
                 .trim(from: 0, to: min(1, Double(current) / Double(max(1, habit.goalTarget))))
@@ -119,19 +204,18 @@ private struct HabitRow: View {
             Text("\(current)")
                 .font(.caption2).bold()
         }
-        .glassEffect(.regular)
+        .onTapGesture { if isToday && !habit.isAutoManaged { toggle() } }
     }
 
     private func toggle() {
         if habit.isCountBased {
-            // Always add — no toggle off for count-based
-            context.insert(HabitCompletion(habit: habit))
+            context.insert(HabitCompletion(date: date, habit: habit))
         } else {
             let cal = Calendar.current
-            if let existing = habit.completions.first(where: { cal.isDate($0.date, inSameDayAs: Date()) }) {
+            if let existing = habit.completions.first(where: { cal.isDate($0.date, inSameDayAs: date) }) {
                 context.delete(existing)
             } else {
-                context.insert(HabitCompletion(habit: habit))
+                context.insert(HabitCompletion(date: date, habit: habit))
             }
         }
     }

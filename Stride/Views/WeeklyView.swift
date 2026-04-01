@@ -3,60 +3,127 @@ import SwiftData
 
 struct WeeklyView: View {
     @Query private var habits: [Habit]
+    @State private var displayedMonth = Date()
 
-    private var weekDates: [Date] {
-        let cal = Calendar.current
-        let today = Date()
-        let weekday = cal.component(.weekday, from: today)
-        let startOfWeek = cal.date(byAdding: .day, value: -(weekday - cal.firstWeekday), to: today)!
-        return (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: startOfWeek) }
+    private let cal = Calendar.current
+
+    private var monthDates: [Date?] {
+        let range = cal.range(of: .day, in: .month, for: displayedMonth)!
+        let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth))!
+        let firstWeekday = cal.component(.weekday, from: firstOfMonth)
+        let leadingBlanks = (firstWeekday - cal.firstWeekday + 7) % 7
+
+        var dates: [Date?] = Array(repeating: nil, count: leadingBlanks)
+        for day in range {
+            dates.append(cal.date(byAdding: .day, value: day - 1, to: firstOfMonth))
+        }
+        return dates
     }
 
-    private let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEE"
-        return f
-    }()
+    private func completionRate(for date: Date) -> Double {
+        let due = habits.filter { $0.isDueOn(date) }
+        guard !due.isEmpty else { return -1 } // no habits due
+        let done = due.filter { $0.isCompletedOn(date) }.count
+        return Double(done) / Double(due.count)
+    }
 
-    private let dayNumFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "d"
-        return f
-    }()
+    private let dayHeaders = Calendar.current.shortWeekdaySymbols
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(habits) { habit in
-                    Section(habit.name) {
-                        HStack {
-                            ForEach(weekDates, id: \.self) { date in
-                                VStack(spacing: 6) {
-                                    Text(dayFormatter.string(from: date))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                    Text(dayNumFormatter.string(from: date))
-                                        .font(.caption)
-                                    if habit.isDueOn(date) {
-                                        Image(systemName: habit.isCompletedOn(date) ? "checkmark.circle.fill" : "circle")
-                                            .foregroundStyle(habit.isCompletedOn(date) ? .green : .secondary)
-                                    } else {
-                                        Image(systemName: "minus")
-                                            .foregroundStyle(.quaternary)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                        }
-                        .padding(.vertical, 4)
+            VStack(spacing: 16) {
+                // Month navigation
+                HStack {
+                    Button { shiftMonth(-1) } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                    Spacer()
+                    Text(displayedMonth.formatted(.dateTime.month(.wide).year()))
+                        .font(.headline)
+                    Spacer()
+                    Button { shiftMonth(1) } label: {
+                        Image(systemName: "chevron.right")
                     }
                 }
+                .padding(.horizontal)
 
-                if habits.isEmpty {
-                    ContentUnavailableView("No habits yet", systemImage: "calendar", description: Text("Add habits in the Habits tab"))
+                // Day headers
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                    ForEach(dayHeaders, id: \.self) { day in
+                        Text(day)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(Array(monthDates.enumerated()), id: \.offset) { _, date in
+                        if let date {
+                            let rate = completionRate(for: date)
+                            let isFuture = date > Date()
+                            VStack(spacing: 4) {
+                                Text(date.formatted(.dateTime.day()))
+                                    .font(.caption)
+                                    .foregroundStyle(cal.isDateInToday(date) ? .accentColor : isFuture ? .secondary : .primary)
+                                Circle()
+                                    .fill(colorForRate(rate, isFuture: isFuture))
+                                    .frame(width: 8, height: 8)
+                            }
+                            .frame(height: 40)
+                        } else {
+                            Color.clear.frame(height: 40)
+                        }
+                    }
                 }
+                .padding(.horizontal)
+
+                // Legend
+                HStack(spacing: 16) {
+                    legendDot(color: .green, label: "All done")
+                    legendDot(color: .orange, label: "Partial")
+                    legendDot(color: .red, label: "None")
+                    legendDot(color: .secondary.opacity(0.2), label: "No habits")
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+                // Summary
+                List {
+                    ForEach(habits) { habit in
+                        HStack {
+                            Text(habit.name)
+                            Spacer()
+                            Text("\(habit.currentStreak)d streak")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text("\(habit.completions.count) total")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
             }
-            .navigationTitle("This Week")
+            .navigationTitle("Stats")
+        }
+    }
+
+    private func shiftMonth(_ delta: Int) {
+        if let d = cal.date(byAdding: .month, value: delta, to: displayedMonth) {
+            displayedMonth = d
+        }
+    }
+
+    private func colorForRate(_ rate: Double, isFuture: Bool) -> Color {
+        if isFuture || rate < 0 { return .secondary.opacity(0.2) }
+        if rate >= 1 { return .green }
+        if rate > 0 { return .orange }
+        return .red
+    }
+
+    @ViewBuilder
+    private func legendDot(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(label)
         }
     }
 }

@@ -16,15 +16,11 @@ struct ContentView: View {
         TabView {
             TodayView()
                 .tabItem {
-                    Label("Today", systemImage: "checkmark.circle")
+                    Label("Habits", systemImage: "checkmark.circle")
                 }
             WeeklyView()
                 .tabItem {
-                    Label("Week", systemImage: "calendar")
-                }
-            HabitListView()
-                .tabItem {
-                    Label("Habits", systemImage: "list.bullet")
+                    Label("Stats", systemImage: "chart.bar")
                 }
             NavigationStack {
                 ScreenTimeLimitsView()
