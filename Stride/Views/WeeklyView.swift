@@ -62,7 +62,7 @@ struct WeeklyView: View {
                             VStack(spacing: 4) {
                                 Text(date.formatted(.dateTime.day()))
                                     .font(.caption)
-                                    .foregroundStyle(cal.isDateInToday(date) ? .accentColor : isFuture ? .secondary : .primary)
+                                    .foregroundStyle(cal.isDateInToday(date) ? Color.accentColor : isFuture ? Color.secondary : Color.primary)
                                 Circle()
                                     .fill(colorForRate(rate, isFuture: isFuture))
                                     .frame(width: 8, height: 8)
