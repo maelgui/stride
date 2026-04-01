@@ -49,11 +49,16 @@ struct TodayView: View {
                                 // Progress ring
                                 ZStack {
                                     Circle()
-                                        .stroke(Color.secondary.opacity(0.2), lineWidth: 3)
+                                        .stroke(Color.accentColor.opacity(0.3), lineWidth: 3)
                                     Circle()
                                         .trim(from: 0, to: p.total > 0 ? Double(p.done) / Double(p.total) : 0)
-                                        .stroke(p.done == p.total && p.total > 0 ? Color.green : Color.accentColor, lineWidth: 3)
+                                        .stroke(Color.accentColor, lineWidth: 3)
                                         .rotationEffect(.degrees(-90))
+                                    if p.done == p.total && p.total > 0 {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundStyle(Color.accentColor)
+                                    }
                                 }
                                 .frame(width: 20, height: 20)
                             }
@@ -159,14 +164,6 @@ private struct HabitRow: View {
 
     var body: some View {
         HStack {
-            if habit.isCountBased {
-                countIcon
-            } else {
-                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isCompleted ? .green : .secondary)
-                    .font(.title2)
-                    .onTapGesture { if isToday && !habit.isAutoManaged { toggle() } }
-            }
             VStack(alignment: .leading) {
                 Text(habit.name)
                     .strikethrough(isCompleted)
@@ -188,6 +185,15 @@ private struct HabitRow: View {
                 }
             }
             .foregroundStyle(isCompleted ? .secondary : .primary)
+            Spacer()
+            if habit.isCountBased {
+                countIcon
+            } else {
+                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isCompleted ? .green : .secondary)
+                    .font(.title2)
+                    .onTapGesture { if isToday && !habit.isAutoManaged { toggle() } }
+            }
         }
         .sensoryFeedback(.impact, trigger: isCompleted)
     }
