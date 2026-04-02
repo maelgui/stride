@@ -7,7 +7,7 @@ struct StrideApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [Habit.self, HabitCompletion.self], cloudKitDatabase: .automatic)
+        .modelContainer(for: [Habit.self, HabitCompletion.self])
     }
 }
 
