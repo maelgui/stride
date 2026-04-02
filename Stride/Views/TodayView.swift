@@ -23,57 +23,53 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Week calendar strip
-                HStack(spacing: 0) {
-                    ForEach(weekDates, id: \.self) { date in
-                        let p = progress(for: date)
-                        let isSelected = cal.isDate(date, inSameDayAs: selectedDate)
-                        let isToday = cal.isDateInToday(date)
-
-                        Button {
-                            selectedDate = date
-                        } label: {
-                            VStack(spacing: 6) {
-                                Text(date.formatted(.dateTime.weekday(.short)))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                ZStack {
-                                    Circle()
-                                        .fill(isSelected ? Color.accentColor : .clear)
-                                        .frame(width: 32, height: 32)
-                                    Text(date.formatted(.dateTime.day()))
-                                        .font(.caption.bold())
-                                        .foregroundStyle(isSelected ? .white : isToday ? .accentColor : .primary)
-                                }
-                                // Progress ring
-                                ZStack {
-                                    Circle()
-                                        .stroke(Color.accentColor.opacity(0.3), lineWidth: 3)
-                                    Circle()
-                                        .trim(from: 0, to: p.total > 0 ? Double(p.done) / Double(p.total) : 0)
-                                        .stroke(Color.accentColor, lineWidth: 3)
-                                        .rotationEffect(.degrees(-90))
-                                    if p.done == p.total && p.total > 0 {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundStyle(Color.accentColor)
-                                    }
-                                }
-                                .frame(width: 20, height: 20)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal)
-
-                Divider()
-
-                // Habits list
                 List {
+                    Section {
+                        HStack(spacing: 0) {
+                            ForEach(weekDates, id: \.self) { date in
+                                let p = progress(for: date)
+                                let isSelected = cal.isDate(date, inSameDayAs: selectedDate)
+                                let isToday = cal.isDateInToday(date)
+
+                                Button {
+                                    selectedDate = date
+                                } label: {
+                                    VStack(spacing: 6) {
+                                        Text(date.formatted(.dateTime.weekday(.short)))
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                        ZStack {
+                                            Circle()
+                                                .fill(isSelected ? Color.accentColor : .clear)
+                                                .frame(width: 32, height: 32)
+                                            Text(date.formatted(.dateTime.day()))
+                                                .font(.caption.bold())
+                                                .foregroundStyle(isSelected ? .white : isToday ? .accentColor : .primary)
+                                        }
+                                        // Progress ring
+                                        ZStack {
+                                            Circle()
+                                                .stroke(Color.accentColor.opacity(0.3), lineWidth: 3)
+                                            Circle()
+                                                .trim(from: 0, to: p.total > 0 ? Double(p.done) / Double(p.total) : 0)
+                                                .stroke(Color.accentColor, lineWidth: 3)
+                                                .rotationEffect(.degrees(-90))
+                                            if p.done == p.total && p.total > 0 {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 8, weight: .bold))
+                                                    .foregroundStyle(Color.accentColor)
+                                            }
+                                        }
+                                        .frame(width: 20, height: 20)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
                     if habits.isEmpty {
                         ContentUnavailableView("No habits yet", systemImage: "plus.circle", description: Text("Tap + to create your first habit"))
                     } else {
@@ -115,7 +111,6 @@ struct TodayView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
-            }
             .navigationTitle("Habits")
             .toolbar {
                 Button { showingForm = true } label: {
